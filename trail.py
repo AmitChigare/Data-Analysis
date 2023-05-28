@@ -9,6 +9,12 @@ import dash
 from dash import html, dcc
 import plotly.express as px
 
+import io
+import base64
+import pandas as pd
+import plotly.subplots as sp
+import plotly.graph_objects as go
+
 # Mapping of keywords to months
 keyword_to_month = {
     "JAN": "January",
@@ -44,6 +50,8 @@ def upload_file(request):
     if request.method == "POST":
         month1 = request.POST.get("month1")
         month2 = request.POST.get("month2")
+        field = request.POST.get("field")
+
         if request.FILES.getlist("files"):
             files = request.FILES.getlist("files")
 
@@ -63,23 +71,23 @@ def upload_file(request):
 
                 ExcelFile.objects.create(file=file, month=month)
         else:
-            return redirect(display_files, month1=month1, month2=month2)
+            return redirect(display_files, month1=month1, month2=month2, field=field)
     return render(request, "upload.html", {"months": months})
 
 
-def display_files(request, month1="January", month2="February"):
+def display_files(request, month1="January", month2="February", field="Location"):
     # Convert month names to datetime objects
     datetime_month1 = datetime.strptime(month1, "%B")
     datetime_month2 = datetime.strptime(month2, "%B")
 
     query = Q(
-        month__month__gte=datetime_month1.month, month__month__lte=datetime_month2.month
+        month__month__gt=datetime_month1.month, month__month__lte=datetime_month2.month
     )
 
     excel_files = ExcelFile.objects.filter(query)
     if not excel_files:
         # No data within the specified month range
-        message = f"No data available from {month1} to {month2}"
+        message = f"<h1>No data available from {month1} to {month2}</h1>"
         return HttpResponse(message)
 
     # Create a dictionary to store the combined data for each month
@@ -103,44 +111,79 @@ def display_files(request, month1="January", month2="February"):
                 [combined_data_dict[file_month], df], ignore_index=True
             )
 
-    # Create a list to store the graph HTML for each unique month
-    graph_html_list = []
+    # Create the Plotly subplots for the combined data
+    fig = sp.make_subplots(
+        rows=1,
+        cols=len(combined_data_dict),
+        subplot_titles=list(combined_data_dict.keys()),
+    )
+
+    col_num = 1
 
     for month, combined_data in combined_data_dict.items():
         if not combined_data.empty:
             # Group the combined data by 'Meter Name' and calculate the sum of 'Amount'
-            grouped_data = (
-                combined_data.groupby("Meter Name")["Amount"].sum().reset_index()
-            )
+            grouped_data = combined_data.groupby(field)["Amount"].sum().reset_index()
 
             # Find the row with the maximum and minimum amounts
             max_amount_row = grouped_data.loc[grouped_data["Amount"].idxmax()]
             min_amount_row = grouped_data.loc[grouped_data["Amount"].idxmin()]
 
-            # Combine the rows into a new DataFrame and transpose it
-            selected_rows = pd.concat([max_amount_row, min_amount_row], axis=1).T
+            # Find the row with the second maximum amount
+            sorted_data = grouped_data.sort_values("Amount", ascending=False)
+            second_max_amount_row = sorted_data.iloc[1]
 
-            # Create the Plotly graph for the selected rows
-            fig = px.bar(selected_rows, x="Meter Name", y="Amount")
+            # Calculate the percentage of the amount for each bar
+            max_amount_percentage = (
+                max_amount_row["Amount"] / grouped_data["Amount"].sum()
+            ) * 100
+            min_amount_percentage = (
+                min_amount_row["Amount"] / grouped_data["Amount"].sum()
+            ) * 100
+            second_max_amount_percentage = (
+                second_max_amount_row["Amount"] / grouped_data["Amount"].sum()
+            ) * 100
 
-            # Customize the graph layout if needed
-            fig.update_layout(
-                title=f"Amount by Meter Name ({month})",
-                xaxis_title="Meter Name",
-                yaxis_title="Amount",
+            # Add the maximum, second maximum, and minimum traces to the subplot
+            fig.add_trace(
+                go.Bar(
+                    x=[
+                        max_amount_row[field],
+                        second_max_amount_row[field],
+                        min_amount_row[field],
+                    ],
+                    y=[
+                        max_amount_row["Amount"],
+                        second_max_amount_row["Amount"],
+                        min_amount_row["Amount"],
+                    ],
+                    name=f"{month}",
+                    marker_color=["green", "blue", "red"],
+                    text=[
+                        f"Max: {max_amount_row['Amount']:.2f} ({max_amount_percentage:.2f}%)",
+                        f"Second Max: {second_max_amount_row['Amount']:.2f} ({second_max_amount_percentage:.2f}%)",
+                        f"Min: {min_amount_row['Amount']:.2f} ({min_amount_percentage:.2f}%)",
+                    ],
+                    textposition="auto",
+                ),
+                row=1,
+                col=col_num,
             )
 
-            # Convert the Plotly figure to HTML
-            graph_html = fig.to_html(full_html=False)
+            col_num += 1
 
-            # Append the graph HTML to the list
-            graph_html_list.append(graph_html)
+    # Update the subplot layout
+    fig.update_layout(
+        title="Max, Second Max, and Min Amounts by Month", showlegend=False
+    )
+
+    # Convert the plotly figure to HTML
+    graph_html = fig.to_html(full_html=False)
 
     # Create the Django response
     response = HttpResponse(content_type="text/html")
 
-    # Write the graph HTML for each unique month to the response
-    for graph_html in graph_html_list:
-        response.write(graph_html)
+    # Write the graph HTML to the response
+    response.write(graph_html)
 
     return response

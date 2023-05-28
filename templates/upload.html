@@ -9,7 +9,10 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
+            background: linear-gradient(to right, #833ab4ad,
+                    #fd1d1db4, #fcb045b6);
+            background-size: 400% 400%;
+            animation: animate-background 10s infinite ease-in-out;
             margin: 0;
             padding: 20px;
             display: flex;
@@ -19,17 +22,57 @@
         }
 
         form {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 5px;
+            background-color: whitesmoke;
+            padding: 40px 60px;
+            border-radius: 15px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: left;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        p {
+            margin-bottom: 5px;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes animate-background {
+            0% {
+                background-position: 0 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         input[type="file"] {
             margin-bottom: 10px;
+            transform: scale(1);
+            transition: transform 0.3s ease;
+        }
+
+        input[type="file"]:hover {
+            transform: scale(1.05);
+        }
+
+        input[type="file"]:focus {
+            filter: blur(5px);
         }
 
         select {
@@ -54,6 +97,17 @@
             background-color: #45a049;
             transform: scale(1.1);
         }
+
+        /* .custom-select option {
+            transition: transform 0.3s ease-in-out;
+        } */
+
+        .custom-select option:hover {
+            background-color: #0058fc;
+            color: #333;
+            transform: translateX(10px);
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -61,20 +115,31 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="file" name="files" multiple>
-        <select name="month1">
+        <p>Select the Usage Start Date:</p>
+        <select name="month1" class="custom-select">
             <option value="" disabled selected>None</option>
             {% for month in months %}
             <option value="{{ month }}">{{ month }}</option>
             {% endfor %}
         </select>
 
-        <select name="month2">
+        <p>Select the Usage End Date:</p>
+        <select name="month2" class="custom-select">
             <option value="" disabled selected>None</option>
             {% for month in months %}
             <option value="{{ month }}">{{ month }}</option>
             {% endfor %}
         </select>
-        <button type="submit">Upload</button>
+
+        <p>Select the Field:</p>
+        <select name="field" class="custom-select">
+            <option value="Meter Name">Meter Name</option>
+            <option value="Resource Group Name">Resource Group Name</option>
+            <option value="Category">Category</option>
+            <option value="Subcategory">Subcategory</option>
+            <option value="Location">Location</option>
+        </select>
+        <button type="submit">Upload | Graph</button>
     </form>
 </body>
 
