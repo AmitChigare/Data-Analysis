@@ -3,6 +3,7 @@ from .models import ExcelFile
 import re
 from django.db.models import Q
 from datetime import datetime
+import os
 
 import pandas as pd
 import dash
@@ -51,6 +52,7 @@ def upload_file(request):
         month1 = request.POST.get("month1")
         month2 = request.POST.get("month2")
         field = request.POST.get("field")
+        field2 = request.POST.get("field2")
 
         if request.FILES.getlist("files"):
             files = request.FILES.getlist("files")
@@ -69,13 +71,35 @@ def upload_file(request):
                 else:
                     month = None
 
-                ExcelFile.objects.create(file=file, month=month)
+                filename = file.name
+                project_name = "random"
+                excel_file = ExcelFile.objects.filter(filename=filename).first()
+
+                if excel_file:
+                    # Update the file field of the existing object
+                    excel_file.file = file
+                    excel_file.save()
+                else:
+                    # Create a new ExcelFile object
+                    ExcelFile.objects.create(
+                        file=file,
+                        month=month,
+                        filename=filename,
+                        project_name=project_name,
+                    )
         else:
-            return redirect(display_files, month1=month1, month2=month2, field=field)
+            return redirect(
+                display_files, month1=month1, month2=month2, field=field, field2=field2
+            )
     return render(request, "upload.html", {"months": months})
 
 
-def display_files(request, month1="January", month2="February", field="Location"):
+from django.urls import reverse
+
+
+def display_files(
+    request, month1="January", month2="February", field="Location", field2="Meter Name"
+):
     # Convert month names to datetime objects
     datetime_month1 = datetime.strptime(month1, "%B")
     datetime_month2 = datetime.strptime(month2, "%B")
@@ -122,63 +146,73 @@ def display_files(request, month1="January", month2="February", field="Location"
 
     for month, combined_data in combined_data_dict.items():
         if not combined_data.empty:
-            # Group the combined data by 'Meter Name' and calculate the sum of 'Amount'
-            grouped_data = combined_data.groupby(field)["Amount"].sum().reset_index()
-
-            # Find the row with the maximum and minimum amounts
-            max_amount_row = grouped_data.loc[grouped_data["Amount"].idxmax()]
-            min_amount_row = grouped_data.loc[grouped_data["Amount"].idxmin()]
-
-            # Find the row with the second maximum amount
-            sorted_data = grouped_data.sort_values("Amount", ascending=False)
-            second_max_amount_row = sorted_data.iloc[1]
-
-            # Calculate the percentage of the amount for each bar
-            max_amount_percentage = (
-                max_amount_row["Amount"] / grouped_data["Amount"].sum()
-            ) * 100
-            min_amount_percentage = (
-                min_amount_row["Amount"] / grouped_data["Amount"].sum()
-            ) * 100
-            second_max_amount_percentage = (
-                second_max_amount_row["Amount"] / grouped_data["Amount"].sum()
-            ) * 100
-
-            # Add the maximum, second maximum, and minimum traces to the subplot
-            fig.add_trace(
-                go.Bar(
-                    x=[
-                        max_amount_row[field],
-                        second_max_amount_row[field],
-                        min_amount_row[field],
-                    ],
-                    y=[
-                        max_amount_row["Amount"],
-                        second_max_amount_row["Amount"],
-                        min_amount_row["Amount"],
-                    ],
-                    name=f"{month}",
-                    marker_color=["green", "blue", "red"],
-                    text=[
-                        f"Max: {max_amount_row['Amount']:.2f} ({max_amount_percentage:.2f}%)",
-                        f"Second Max: {second_max_amount_row['Amount']:.2f} ({second_max_amount_percentage:.2f}%)",
-                        f"Min: {min_amount_row['Amount']:.2f} ({min_amount_percentage:.2f}%)",
-                    ],
-                    textposition="auto",
-                ),
-                row=1,
-                col=col_num,
+            # Group the combined data by 'field' and 'field2' and calculate the sum of 'Amount'
+            grouped_data = (
+                combined_data.groupby([field, field2])["Amount"].sum().reset_index()
             )
+
+            # Sort the data by 'Amount' in descending order for each 'field'
+            sorted_data = (
+                grouped_data.groupby(field)
+                .apply(lambda x: x.sort_values("Amount", ascending=False))
+                .reset_index(drop=True)
+            )
+
+            # Calculate the cumulative sum of 'Amount' for each 'field'
+            sorted_data["Cumulative Amount"] = sorted_data.groupby(field)[
+                "Amount"
+            ].cumsum()
+
+            # Sort the data by 'Amount' in descending order
+            sorted_data = sorted_data.sort_values("Amount", ascending=False)
+
+            sorted_data = sorted_data.head(5)
+
+            # Calculate the total amount for each field
+            total_amount = sorted_data["Amount"].sum()
+
+            # Calculate the percentage taken for each row
+            sorted_data["Percentage Taken"] = (
+                sorted_data["Amount"] / total_amount
+            ) * 100
+
+            # Add the stacked bar traces to the subplot
+            for i, row in sorted_data.iterrows():
+                # Get the color for the current field2 value
+                color = px.colors.qualitative.Alphabet[
+                    i % len(px.colors.qualitative.Alphabet)
+                ]
+
+                fig.add_trace(
+                    go.Bar(
+                        x=[row[field]],
+                        y=[row["Amount"]],
+                        name=row[field2],
+                        marker_color=color,
+                        text=f"Amount: {row['Amount']:.2f}<br>Cumulative Amount: {row['Cumulative Amount']:.2f}<br>Percentage Taken: {row['Percentage Taken']:.2f}%",
+                        textposition="auto",
+                    ),
+                    row=1,
+                    col=col_num,
+                )
 
             col_num += 1
 
     # Update the subplot layout
     fig.update_layout(
-        title="Max, Second Max, and Min Amounts by Month", showlegend=False
+        title="Stacked Bar Graph by Month",
+        showlegend=False,
+        xaxis=dict(title=field),
+        yaxis=dict(title="Amount"),
+        barmode="stack",
     )
 
-    # Convert the plotly figure to HTML
-    graph_html = fig.to_html(full_html=False)
+    # Add a button linking to the /upload URL
+    upload_url = reverse(
+        "upload_file"
+    )  # Assuming the URL name for the upload_file view is "upload_file"
+    upload_button = f'<a href="{upload_url}" style="background-color: #4CAF50;color: white;padding: 10px 20px;border-radius: 5px;cursor: pointer;text-decoration:None;">Go to Home</a>'
+    graph_html = f"{upload_button}<br><br>" + fig.to_html(full_html=False)
 
     # Create the Django response
     response = HttpResponse(content_type="text/html")

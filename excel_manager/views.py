@@ -151,18 +151,6 @@ def display_files(
                 combined_data.groupby([field, field2])["Amount"].sum().reset_index()
             )
 
-            # Find the row with the maximum and minimum amounts for each 'field'
-            max_amount_row = (
-                grouped_data.groupby(field)["Amount"]
-                .idxmax()
-                .apply(lambda x: grouped_data.loc[x])
-            )
-            min_amount_row = (
-                grouped_data.groupby(field)["Amount"]
-                .idxmin()
-                .apply(lambda x: grouped_data.loc[x])
-            )
-
             # Sort the data by 'Amount' in descending order for each 'field'
             sorted_data = (
                 grouped_data.groupby(field)
@@ -175,6 +163,14 @@ def display_files(
                 "Amount"
             ].cumsum()
 
+            # Sort the data by 'Amount' in descending order
+            sorted_data = sorted_data.sort_values("Amount", ascending=False)
+
+            sorted_data = sorted_data.head(5)
+
+            # Calculate the total amount for each field
+            total_amount = sorted_data.groupby(field)["Amount"].transform("sum")
+
             # Add the stacked bar traces to the subplot
             for i, row in sorted_data.iterrows():
                 # Get the color for the current field2 value
@@ -182,13 +178,15 @@ def display_files(
                     i % len(px.colors.qualitative.Alphabet)
                 ]
 
+                percentage_taken = (row["Amount"] / total_amount[i]) * 100
+
                 fig.add_trace(
                     go.Bar(
                         x=[row[field]],
                         y=[row["Amount"]],
                         name=row[field2],
                         marker_color=color,
-                        text=f"Amount: {row['Amount']:.2f}<br>Cumulative Amount: {row['Cumulative Amount']:.2f}",
+                        text=f"Amount: {row['Amount']:.2f}<br>{percentage_taken:.2f}%",
                         textposition="auto",
                     ),
                     row=1,
