@@ -9,12 +9,14 @@ import pandas as pd
 import dash
 from dash import html, dcc
 import plotly.express as px
-
+from dash.dependencies import Input, Output
 import io
 import base64
 import pandas as pd
 import plotly.subplots as sp
 import plotly.graph_objects as go
+
+import matplotlib.pyplot as plt
 
 # Mapping of keywords to months
 keyword_to_month = {
@@ -290,7 +292,6 @@ def display_files(
 
     return response
 
-
 def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
     # Convert month names to datetime objects
     datetime_month1 = datetime.strptime(month1, "%B")
@@ -308,6 +309,7 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
 
     # Create a dictionary to store the combined data for each month
     combined_data_dict = {}
+    combined_data_dict1 = {}
 
     for excel_file in excel_files:
         excel_file_path = excel_file.file.path
@@ -321,10 +323,14 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
         if file_month not in combined_data_dict:
             # If the month is not already in the dictionary, create a new key-value pair
             combined_data_dict[file_month] = df
+            combined_data_dict1[file_month] = df
         else:
             # If the month is already in the dictionary, concatenate the DataFrame with the existing data
             combined_data_dict[file_month] = pd.concat(
                 [combined_data_dict[file_month], df], ignore_index=True
+            )
+            combined_data_dict1[file_month] = pd.concat(
+                [combined_data_dict1[file_month], df], ignore_index=True
             )
 
     # Keep only 'Amount', field1, and field2 columns in each DataFrame
@@ -344,47 +350,152 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
             subset=field1
         )
         combined_data_dict[month] = combined_data_dict[month][
-            ["Amount_sum", field1, field2]
+            ["Amount", field1, field2]
+        ]
+
+    for month, df in combined_data_dict1.items():
+        combined_data_dict1[month] = df[["Amount", field1, field2]]
+
+        # Group by field1 and aggregate the amounts
+        df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
+
+        # Update the DataFrame with the aggregated amounts
+        combined_data_dict1[month] = combined_data_dict1[month].merge(
+            df_grouped_field1, on=field1, suffixes=("", "_sum")
+        )
+
+        # Drop duplicate rows and unnecessary columns
+        combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
+            subset=field1
+        )
+        combined_data_dict1[month] = combined_data_dict1[month][
+            ["Amount", field1, field2]
         ]
 
         # Group by field2 and aggregate the amounts
         df_grouped_field2 = df.groupby(field2)["Amount"].sum().reset_index()
 
         # Update the DataFrame with the aggregated amounts
-        combined_data_dict[month] = combined_data_dict[month].merge(
+        combined_data_dict1[month] = combined_data_dict1[month].merge(
             df_grouped_field2, on=field2, suffixes=("", "_sum")
         )
 
         # Drop duplicate rows and unnecessary columns
-        combined_data_dict[month] = combined_data_dict[month].drop_duplicates(
+        combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
             subset=field2
         )
-        combined_data_dict[month] = combined_data_dict[month][
+        combined_data_dict1[month] = combined_data_dict1[month][
             ["Amount", field1, field2]
         ]
 
-    print(combined_data_dict)
-    combined_field1_values = []  # List to store combined resource group names
-    combined_field2_values = []  # List to store combined field2 values
+    # Combine unique values of field1
+    combined_field1_values = sorted(list(set(item for sublist in [df[field1].tolist() for df in combined_data_dict.values()] for item in sublist)))
+    combined_field2_values = sorted(list(set(item for sublist in [df[field2].tolist() for df in combined_data_dict1.values()] for item in sublist)))
 
-    for df in combined_data_dict.values():
-        field_1 = df[field1].tolist()  # Extract resource group names as a list
-        field2_values = df[field2].tolist()  # Extract field2 values as a list
+    context = {
+        'combined_field1_values': combined_field1_values,
+        'combined_field2_values': combined_field2_values,
+        'field2': field2,
+    }
 
-        combined_field1_values.extend(
-            field_1
-        )  # Extend the combined list with resource group names
-        combined_field2_values.extend(
-            field2_values
-        )  # Extend the combined list with field2 values
+    if request.method == 'POST':
+        field1value = request.POST.get('field1value')
+        field2value = request.POST.get('field2value')
 
-    # Remove duplicates and sort the lists
-    combined_field1_values = sorted(list(set(combined_field1_values)))
-    combined_field2_values = sorted(list(set(combined_field2_values)))
+        if field2value is not None:
+            # Combine unique values of field1 and field2
+            combined_field2_values = sorted(list(set(item for sublist in [df[field2].tolist() for df in combined_data_dict.values()] for item in sublist)))
+            context['combined_field2_values'] = combined_field2_values
 
-    print(combined_field1_values)
-    print(combined_field2_values)
+        if field2value == 'None' or field2value is None:
+            amounts = []  # List to store the amounts
 
-    # Rest of the code here...
+            for month, df in combined_data_dict.items():
+                # Search for the row in the column field1 matching the field1value value
+                row = df[df[field1] == field1value]
 
-    return HttpResponse("Hey")
+                if len(row) > 0:
+                    # If the row is present, get the corresponding amount
+                    amount = row['Amount'].iloc[0]
+                else:
+                    # If the row is not present, consider the amount as zero
+                    amount = 0
+
+                amounts.append(amount)
+
+            # Plotting the line graph and pie chart
+            months = list(combined_data_dict.keys())
+
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+            # Line graph
+            ax1.plot(months, amounts, marker='o')
+            ax1.set_xlabel('Month')
+            ax1.set_ylabel('Amount')
+            ax1.set_title(f'Amount for "{field1value}" in each month')
+
+            # Pie chart
+            total_amount = sum(amounts)
+            proportions = [amount / total_amount for amount in amounts]
+            labels = [f'{month}: {proportion * 100:.2f}%' for month, proportion in zip(months, proportions)]
+            ax2.pie(proportions, labels=labels, autopct='%1.1f%%')
+            ax2.set_title(f'Proportions of Amount for "{field1value}"')
+
+            plt.tight_layout()
+            plt.show()
+        else:
+            amounts = []  # List to store the amounts
+            for month, df in combined_data_dict.items():
+                combined_data_dict[month] = df[["Amount", field1, field2]]
+
+                # Group by field2 and aggregate the amounts
+                df_grouped_field2 = df.groupby(field2)["Amount"].sum().reset_index()
+
+                # Update the DataFrame with the aggregated amounts
+                combined_data_dict[month] = combined_data_dict[month].merge(
+                    df_grouped_field2, on=field2, suffixes=("", "_sum")
+                )
+
+                # Drop duplicate rows and unnecessary columns
+                combined_data_dict[month] = combined_data_dict[month].drop_duplicates(
+                    subset=field2
+                )
+                combined_data_dict[month] = combined_data_dict[month][
+                    ["Amount", field1, field2]
+                ]
+
+                # Search for the row in the column field1 matching the field1value value
+                row = df[df[field2] == field2value]
+
+                if len(row) > 0:
+                    # If the row is present, get the corresponding amount
+                    amount = row['Amount'].iloc[0]
+                else:
+                    # If the row is not present, consider the amount as zero
+                    amount = 0
+
+                amounts.append(amount)
+
+            context = {'combined_field1_values': combined_field1_values}
+            # Plotting the line graph and pie chart
+            months = list(combined_data_dict.keys())
+
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+            # Line graph
+            ax1.plot(months, amounts, marker='o')
+            ax1.set_xlabel('Month')
+            ax1.set_ylabel('Amount')
+            ax1.set_title(f'Amount for "{field1value}" in "{field2value}" in each month')
+
+            # Pie chart
+            total_amount = sum(amounts)
+            proportions = [amount / total_amount for amount in amounts]
+            labels = [f'{month}: {proportion * 100:.2f}%' for month, proportion in zip(months, proportions)]
+            ax2.pie(proportions, labels=labels, autopct='%1.1f%%')
+            ax2.set_title(f'Proportions of Amount for "{field1value}" in "{field2value}"')
+
+            plt.tight_layout()
+            plt.show()
+
+    return render(request, 'choose.html', context)
