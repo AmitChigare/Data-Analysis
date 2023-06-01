@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+
+<body>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="files" multiple>
+        <p>Select the Usage Start Date:</p>
+        <select name="month1" class="custom-select">
+            {% for month in months %}
+            <option value="{{ month }}"><span>{{ month }}</span></option>
+            {% endfor %}
+        </select>
+
+        <p>Select the Usage End Date:</p>
+        <select name="month2" class="custom-select">
+            <option value="" disabled selected>None</option>
+            {% for month in months %}
+            <option value="{{ month }}"><span>{{ month }}</span></option>
+            {% endfor %}
+        </select>
+
+        <p>Select the Field 2:</p>
+        <select name="field2" class="custom-select">
+            <option value="Meter Name">Meter Name</option>
+            <option value="Resource Group Name">Resource Group Name</option>
+            <option value="Category">Category</option>
+            <option value="Subcategory">Subcategory</option>
+            <option value="Location">Location</option>
+        </select>
+
+        <button type="submit">Upload | Graph</button>
+    </form>
+</body>
+
+</html>

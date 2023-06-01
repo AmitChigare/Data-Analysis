@@ -9,4 +9,9 @@ urlpatterns = [
         views.display_files,
         name="display_files",
     ),
+    path(
+        "lines/<str:month1>/<str:month2>/<str:field2>/",
+        views.line_graph,
+        name="line_graph",
+    ),
 ]
