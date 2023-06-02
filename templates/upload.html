@@ -11,7 +11,8 @@
 </head>
 
 <body>
-    <form method="post" enctype="multipart/form-data">
+    <h1 id="loading-indicator" class="loading">Loading...</h1>
+    <form method="post" enctype="multipart/form-data" id="my-form">
         {% csrf_token %}
         <input type="file" name="files" multiple>
         <p>Select the Usage Start Date:</p>
@@ -49,6 +50,37 @@
         </select>
         <button type="submit">Upload | Graph</button>
     </form>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $(document).on({
+                ajaxStart: function () {
+                    // Show the loading indicator when an AJAX request starts
+                    $('#loading-indicator').show();
+                },
+                ajaxStop: function () {
+                    // Hide the loading indicator when all AJAX requests are complete
+                    $('#loading-indicator').hide();
+                }
+            });
+        });
+
+        $(document).on('submit', '#my-form', function (event) {
+            event.preventDefault(); // Prevent the default form submission behavior
+
+            // Serialize the form data
+            var formData = $(this).serialize();
+
+            var currentURL = window.location.href;
+
+            // Send an AJAX POST request to the server
+            $.post(currentURL, formData, function (response) {
+                // Handle the server response
+                var dynamicURL = currentURL;
+                window.location.href = dynamicURL;
+            });
+        });
+    </script>
 </body>
 
 </html>

@@ -3,13 +3,38 @@ body {
     background: linear-gradient(to right, #833ab4ad,
             #fd1d1db4, #fcb045b6);
     background-size: 400% 400%;
-    animation: animate-background 10s infinite ease-in-out;
+    animation: animate-background 50s infinite ease-in-out;
     margin: 0;
     padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+}
+
+a {
+    text-decoration: none;
+}
+
+.loading {
+    display: none;
+    position: absolute;
+    top: 30px;
+    animation: loading 2s linear infinite;
+}
+
+@keyframes loading {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 form {
@@ -21,7 +46,7 @@ form {
     flex-direction: column;
     align-items: center;
     text-align: left;
-    animation: fadeIn 1s ease-in-out;
+    animation: fadeIn 1.5s ease-in-out;
 }
 
 p {
@@ -31,12 +56,22 @@ p {
 @keyframes fadeIn {
     0% {
         opacity: 0;
-        transform: translateY(70px);
+        transform: translateY(-150px);
+
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateY(30px);
+
+    }
+
+    70% {
+        transform: translateY(-20px);
 
     }
 
     100% {
-        opacity: 1;
         transform: translateY(0);
 
     }

@@ -304,7 +304,7 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
         month__month__gt=datetime_month1.month, month__month__lte=datetime_month2.month
     )
 
-    excel_files = ExcelFile.objects.filter(query)
+    excel_files = ExcelFile.objects.filter(query).order_by('month')
     if not excel_files:
         # No data within the specified month range
         message = f"<h1>No data available from {month1} to {month2}</h1>"
@@ -410,7 +410,7 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
             combined_field2_values = sorted(list(set(item for sublist in [df[field2].tolist() for df in combined_data_dict.values()] for item in sublist)))
             context['combined_field2_values'] = combined_field2_values
 
-        if field2value == 'None' or field2value is None:
+        if field2value == 'All':
             amounts = []  # List to store the amounts
 
             for month, df in combined_data_dict.items():
@@ -429,23 +429,21 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
             # Plotting the line graph and pie chart
             months = list(combined_data_dict.keys())
 
-            fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            fig = sp.make_subplots(rows=1, cols=1, subplot_titles=[
                 f'Amount for "{field1value}" in each month',
-                f'Proportions of Amount for "{field1value}"'])
+                ])
 
             # Line graph
             fig.add_trace(go.Scatter(x=months, y=amounts, mode='markers+lines'), row=1, col=1)
             fig.update_xaxes(title='Month', row=1, col=1)
             fig.update_yaxes(title='Amount', row=1, col=1)
 
-            # Pie chart
-            # total_amount = sum(amounts)
-            # proportions = [amount / total_amount for amount in amounts]
-            # labels = [f'{month}: {proportion * 100:.2f}%' for month, proportion in zip(months, proportions)]
-            # fig.add_trace(go.Pie(labels=labels, values=proportions, hoverinfo='label+percent'), row=1, col=2)
+            # Pie chart (using a separate figure)
+            # pie_fig = go.Figure(data=[go.Pie(labels=months, values=amounts, hoverinfo='label+percent')])
+            # pie_fig.update_layout(title=f'Proportions of Amount for "{field1value}"')
 
-            fig.update_layout(title=f'Amount for "{field1value}" in each month', showlegend=False)
             fig.show()
+            # pie_fig.show()
         else:
             amounts = []  # List to store the amounts
 
@@ -465,23 +463,22 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
             # Plotting the line graph and pie chart
             months = list(combined_data_dict1.keys())
 
-            fig = make_subplots(rows=1, cols=2, subplot_titles=[
-                f'Amount for "{field1value}" in "{field2value}" in each month',
-                f'Proportions of Amount for "{field2value}"'])
+            fig = sp.make_subplots(rows=1, cols=1, subplot_titles=[
+                f'Amount for "{field2value}" in "{field1value}" in each month'
+                ])
 
             # Line graph
-            fig.add_trace(go.Scatter(x=months, y=amounts, mode='markers+lines'), row=1, col=1)
+            fig.add_trace(go.Scatter(x=months, y=amounts, mode='markers+lines+text', fillcolor='red'), row=1, col=1)
             fig.update_xaxes(title='Month', row=1, col=1)
             fig.update_yaxes(title='Amount', row=1, col=1)
 
-            # Pie chart
-            # total_amount = sum(amounts)
-            # proportions = [amount / total_amount for amount in amounts]
-            # labels = [f'{month}: {proportion * 100:.2f}%' for month, proportion in zip(months, proportions)]
-            # fig.add_trace(go.Pie(labels=labels, values=proportions, hoverinfo='label+percent'), row=1, col=2)
+            # Pie chart (using a separate figure)
+            # pie_fig = go.Figure(data=[go.Pie(labels=months, values=amounts, hoverinfo='label+percent')])
+            # pie_fig.update_layout(title=f'Proportions of Amount for "{field2value} in "{field1value}"')
 
-            fig.update_layout(title=f'Amount for "{field2value}" in each month', showlegend=False)
             fig.show()
-
+            # pie_fig.show()
+    
     return render(request, 'choose.html', context)
 
+     
