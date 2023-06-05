@@ -12,12 +12,11 @@
 
 <body>
     <h1 id="loading-indicator" class="loading">Loading...</h1>
-    <form method="post" enctype="multipart/form-data" id="my-form">
+    <form method="post" id="my-form">
         {% csrf_token %}
-        <input type="file" name="files" multiple>
+        <!-- <input type="file" name="files" multiple> -->
         <p>Select the Usage Start Date:</p>
         <select name="month1" class="custom-select">
-            <option value="" disabled selected>None</option>
             {% for month in months %}
             <option value="{{ month }}"><span>{{ month }}</span></option>
             {% endfor %}
@@ -42,13 +41,19 @@
 
         <p>Select the Parameter:</p>
         <select name="field2" class="custom-select">
-            <option value="Meter Name">Meter Name</option>
             <option value="Resource Group Name">Resource Group Name</option>
+            <option value="Meter Name">Meter Name</option>
             <option value="Category">Category</option>
             <option value="Subcategory">Subcategory</option>
             <option value="Location">Location</option>
         </select>
-        <button type="submit">Upload | Graph</button>
+
+        <!-- <p>Select the Method:</p>
+        <select name="method" class="custom-select">
+            <option value="month">month</option>
+            <option value="project">project</option>
+        </select> -->
+        <button type="submit">Get Graph</button>
     </form>
 </body>
 

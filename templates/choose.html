@@ -31,7 +31,11 @@
         </select>
         <button type="submit">Submit</button>
         <br>
-        <a style="font-size: 13px; " href="{% url 'upload_file' %}">Go to Upload >> </a>
+        <div class="button-container">
+            <button>
+                <a style="font-size: 13px;" href="{% url 'home' %}">Go to Upload >> </a>
+            </button>
+        </div>
     </form>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>

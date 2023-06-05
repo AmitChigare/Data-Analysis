@@ -11,9 +11,9 @@
 </head>
 
 <body>
-    <form method="post" enctype="multipart/form-data" id="my-form">
+    <form method="post" id="my-form">
         {% csrf_token %}
-        <input type="file" name="files" multiple>
+        <!-- <input type="file" name="files" multiple> -->
         <p>Select the Usage Start Date:</p>
         <select name="month1" class="custom-select">
             {% for month in months %}
@@ -38,7 +38,7 @@
             <option value="Location">Location</option>
         </select>
 
-        <button type="submit">Upload | Graph</button>
+        <button type="submit">Get Graph</button>
     </form>
 </body>
 

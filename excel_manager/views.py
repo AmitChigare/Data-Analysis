@@ -49,67 +49,79 @@ months = [
 ]
 
 
-def upload_file(request):
+def home(request):
+    if request.method == "POST" and request.FILES.getlist("files"):
+        files = request.FILES.getlist("files")
+
+        for file in files:
+            keyword = file.name
+
+            match = re.search(
+                r"\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b",
+                keyword.upper(),
+            )
+
+            if match:
+                keyword = match.group(0)
+                month = datetime.strptime(keyword_to_month[keyword], "%B").date()
+            else:
+                month = None
+
+            filename = file.name
+            parts = filename.split()
+            project_name = " ".join(
+                parts[
+                    3 : next(
+                        (i for i, part in enumerate(parts) if part.isdigit()),
+                        len(parts),
+                    )
+                ]
+            )
+            excel_file = ExcelFile.objects.filter(filename=filename).first()
+
+            if excel_file:
+                # Update the file field of the existing object
+                excel_file.file = file
+                excel_file.save()
+            else:
+                # Create a new ExcelFile object
+                ExcelFile.objects.create(
+                    file=file,
+                    month=month,
+                    filename=filename,
+                    project_name=project_name,
+                )
+
+    return render(request, 'index.html')
+
+def line_graph_method(request):
     if request.method == "POST":
         month1 = request.POST.get("month1")
         month2 = request.POST.get("month2")
-        # field = request.POST.get("field")
+        field2 = request.POST.get("field2")
+
+        return redirect("line_graph", month1=month1, month2=month2, field2=field2)
+
+    return render(request, 'line.html', {'months':months})
+
+def stacked_bar_method(request):
+    if request.method == "POST":
+        month1 = request.POST.get("month1")
+        month2 = request.POST.get("month2")
+        field = request.POST.get("field")
         field2 = request.POST.get("field2")
         # method = request.POST.get("method")
 
-        if request.FILES.getlist("files"):
-            files = request.FILES.getlist("files")
+        return redirect(
+            'display_files',
+            month1=month1,
+            month2=month2,
+            field=field,
+            field2=field2,
+            # method=method,
+        )
 
-            for file in files:
-                keyword = file.name
-
-                match = re.search(
-                    r"\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b",
-                    keyword.upper(),
-                )
-
-                if match:
-                    keyword = match.group(0)
-                    month = datetime.strptime(keyword_to_month[keyword], "%B").date()
-                else:
-                    month = None
-
-                filename = file.name
-                parts = filename.split()
-                project_name = " ".join(
-                    parts[
-                        3 : next(
-                            (i for i, part in enumerate(parts) if part.isdigit()),
-                            len(parts),
-                        )
-                    ]
-                )
-                excel_file = ExcelFile.objects.filter(filename=filename).first()
-
-                if excel_file:
-                    # Update the file field of the existing object
-                    excel_file.file = file
-                    excel_file.save()
-                else:
-                    # Create a new ExcelFile object
-                    ExcelFile.objects.create(
-                        file=file,
-                        month=month,
-                        filename=filename,
-                        project_name=project_name,
-                    )
-        else:
-            return redirect("line_graph", month1=month1, month2=month2, field2=field2)
-            return redirect(
-                display_files,
-                month1=month1,
-                month2=month2,
-                # field=field,
-                field2=field2,
-                # method=method,
-            )
-
-    return render(request, "line.html", {"months": months})
+    return render(request, 'bar.html', {'months':months})
 
 
 from django.urls import reverse
@@ -121,7 +133,7 @@ def display_files(
     month2="February",
     field="Location",
     field2="Meter Name",
-    method="Month",
+    # method="Month",
 ):
     # Convert month names to datetime objects
     datetime_month1 = datetime.strptime(month1, "%B")
@@ -152,24 +164,24 @@ def display_files(
         # Get the project_name
         project_name = excel_file.project_name
 
-        if method == "Month":
-            if file_month not in combined_data_dict:
-                # If the month is not already in the dictionary, create a new key-value pair
-                combined_data_dict[file_month] = df
-            else:
-                # If the month is already in the dictionary, concatenate the DataFrame with the existing data
-                combined_data_dict[file_month] = pd.concat(
-                    [combined_data_dict[file_month], df], ignore_index=True
-                )
+        # if method == "Month":
+        if file_month not in combined_data_dict:
+            # If the month is not already in the dictionary, create a new key-value pair
+            combined_data_dict[file_month] = df
         else:
-            if project_name not in combined_data_dict:
-                # If the month is not already in the dictionary, create a new key-value pair
-                combined_data_dict[project_name] = df
-            else:
-                # If the month is already in the dictionary, concatenate the DataFrame with the existing data
-                combined_data_dict[project_name] = pd.concat(
-                    [combined_data_dict[project_name], df], ignore_index=True
-                )
+            # If the month is already in the dictionary, concatenate the DataFrame with the existing data
+            combined_data_dict[file_month] = pd.concat(
+                [combined_data_dict[file_month], df], ignore_index=True
+            )
+        # else:
+        #     if project_name not in combined_data_dict:
+        #         # If the month is not already in the dictionary, create a new key-value pair
+        #         combined_data_dict[project_name] = df
+        #     else:
+        #         # If the month is already in the dictionary, concatenate the DataFrame with the existing data
+        #         combined_data_dict[project_name] = pd.concat(
+        #             [combined_data_dict[project_name], df], ignore_index=True
+        #         )
 
     # Create the Plotly subplots for the combined data
     fig = sp.make_subplots(
@@ -279,7 +291,7 @@ def display_files(
 
     # Add a button linking to the /upload URL
     upload_url = reverse(
-        "upload_file"
+        "home"
     )  # Assuming the URL name for the upload_file view is "upload_file"
     upload_button = f'<a href="{upload_url}" style="background-color: #4CAF50;color: white;padding: 10px 20px;border-radius: 5px;cursor: pointer;text-decoration:None;">Go to Home</a>'
     graph_html = f"{upload_button}<br><br>" + fig.to_html(full_html=False)
@@ -411,39 +423,38 @@ def line_graph(request, month1, month2, field2, field1="Resource Group Name"):
             context['combined_field2_values'] = combined_field2_values
 
         if field2value == 'All':
-            amounts = []  # List to store the amounts
+            amounts_dict = {}  # Dictionary to store amounts for each field2 value
 
-            for month, df in combined_data_dict.items():
-                # Search for the row in the column field1 matching the field1value value
-                row = df[df[field1] == field1value]
+            for field2_val in combined_field2_values:
+                amounts = []  # List to store the amounts
 
-                if len(row) > 0:
-                    # If the row is present, get the corresponding amount
-                    amount = row['Amount'].iloc[0]
-                else:
-                    # If the row is not present, consider the amount as zero
-                    amount = 0
+                for month, df in combined_data_dict1.items():
+                    # Search for the row in the column field2 matching the field2_val
+                    row = df[df[field2] == field2_val]
 
-                amounts.append(amount)
+                    if len(row) > 0:
+                        # If the row is present, get the corresponding amount
+                        amount = row['Amount'].iloc[0]
+                    else:
+                        # If the row is not present, consider the amount as zero
+                        amount = 0
 
-            # Plotting the line graph and pie chart
-            months = list(combined_data_dict.keys())
+                    amounts.append(amount)
 
-            fig = sp.make_subplots(rows=1, cols=1, subplot_titles=[
-                f'Amount for "{field1value}" in each month',
-                ])
+                amounts_dict[field2_val] = amounts
 
-            # Line graph
-            fig.add_trace(go.Scatter(x=months, y=amounts, mode='markers+lines'), row=1, col=1)
-            fig.update_xaxes(title='Month', row=1, col=1)
-            fig.update_yaxes(title='Amount', row=1, col=1)
+            # Plotting the line graph
+            months = list(combined_data_dict1.keys())
 
-            # Pie chart (using a separate figure)
-            # pie_fig = go.Figure(data=[go.Pie(labels=months, values=amounts, hoverinfo='label+percent')])
-            # pie_fig.update_layout(title=f'Proportions of Amount for "{field1value}"')
+            fig = go.Figure()
+
+            for field2_val, amounts in amounts_dict.items():
+                fig.add_trace(go.Scatter(x=months, y=amounts, mode='lines+markers', name=field2_val))
+
+            fig.update_layout(title=f'Amount for "{field1value}" in each month', xaxis_title='Month', yaxis_title='Amount')
 
             fig.show()
-            # pie_fig.show()
+    
         else:
             amounts = []  # List to store the amounts
 

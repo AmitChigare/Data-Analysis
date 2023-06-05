@@ -3,7 +3,7 @@ body {
     background: linear-gradient(to right, #833ab4ad,
             #fd1d1db4, #fcb045b6);
     background-size: 400% 400%;
-    animation: animate-background 50s infinite ease-in-out;
+    /* animation: animate-background 50s infinite ease-in-out; */
     margin: 0;
     padding: 20px;
     display: flex;
@@ -47,10 +47,37 @@ form {
     align-items: center;
     text-align: left;
     animation: fadeIn 1.5s ease-in-out;
+    margin-bottom: 20px;
 }
+
+.container {
+    display: flex;
+    flex-direction: column;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: -10px;
+}
+
+.button-container button {
+    margin: 0 10px;
+    background-color: lightblue;
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    color: white;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+}
+
 
 p {
     margin-bottom: 5px;
+    text-align: center;
+    font-weight: 600;
 }
 
 @keyframes fadeIn {
@@ -104,9 +131,7 @@ input[type="file"]:hover {
     transform: scale(1.05);
 }
 
-input[type="file"]:focus {
-    filter: blur(5px);
-}
+
 
 select {
     padding: 5px;
@@ -151,8 +176,8 @@ button[type="submit"] {
     transition: all 0.3s ease;
 }
 
-button[type="submit"]:hover {
-    background-color: #45a049;
+button:hover {
+    /* background-color: #45a049; */
     transform: scale(1.1);
 }
 

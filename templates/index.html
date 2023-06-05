@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .button-container button {
+            margin: 0 10px;
+            background-color: lightblue;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <form method="post" enctype="multipart/form-data" id="my-form">
+            {% csrf_token %}
+            <input type="file" name="files" multiple>
+            <button type="submit">Upload | Graph</button>
+        </form>
+        <p>Choose Method</p>
+        <div class="button-container">
+            <button><a href="{% url 'line_graph_method' %}">Line Graph</a></button>
+            <button><a href="{% url 'stacked_bar_method' %}">Stacked Bar Graph</a></button>
+        </div>
+    </div>
+
+</body>
+
+</html>
