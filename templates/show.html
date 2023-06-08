@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Your Plot</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body>
+    <div style="display: flex; flex-direction: column;">
+        <div>
+            <form method="POST" id="my-form"
+                style="display: flex; width: 100vw; justify-content: space-around; height: 15vh;">
+                {% csrf_token %}
+                <div>
+                    <p>Select the Usage Start Date:</p>
+                    <select name="month1" class="custom-select">
+                        {% for month in months %}
+                        <option value="{{ month }}"><span>{{ month }}</span></option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <p>Select the Usage End Date:</p>
+                    <select name="month2" class="custom-select">
+                        <option value="" disabled selected>None</option>
+                        {% for month in months %}
+                        <option value="{{ month }}"><span>{{ month }}</span></option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <p>Select the Field 2:</p>
+                    <select name="field2" class="custom-select">
+                        <option value="Meter Name">Meter Name</option>
+                        <!-- <option value="Resource Group Name">Resource Group Name</option> -->
+                        <option value="Category">Category</option>
+                        <option value="Subcategory">Subcategory</option>
+                        <option value="Location">Location</option>
+                    </select>
+                </div>
+
+                <div>
+                    <p>Select the Resource group name:</p>
+                    <select name="field1value">
+                        {% for combined_field1_value in combined_field1_values %}
+                        <option value="{{ combined_field1_value }}">{{ combined_field1_value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- <p>Select the {{field2}} value:</p>
+        <select name="field2value">
+            <option value="All" selected>All</option>
+            {% for combined_field2_value in combined_field2_values %}
+            <option value="{{ combined_field2_value }}">{{ combined_field2_value }}</option>
+            {% endfor %}
+        </select> -->
+                <button style="background-color: #4CAF50;
+                border: none;
+                color: white;
+                padding: 1px 8px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                border-radius: 2px;
+                margin-top: 3px;" type="submit">Submit</button>
+            </form>
+        </div>
+        <div id="graph" style="height: 75vh;">
+            {{ graph|safe }}
+        </div>
+    </div>
+</body>
+
+</html>

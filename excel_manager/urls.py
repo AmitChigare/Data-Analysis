@@ -13,7 +13,7 @@ urlpatterns = [
         name="display_files",
     ),
     path(
-        "lines/<str:month1>/<str:month2>/<str:field2>/",
+        "lines/<str:month1>/<str:month2>/<str:field2>/<str:field1>/",
         views.line_graph,
         name="line_graph",
     ),

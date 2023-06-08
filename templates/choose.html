@@ -7,13 +7,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
     <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
 
 <body>
-    <h1 id="loading-indicator" class="loading">Loading...</h1>
-    <form method="post" id="my-form">
+    <!-- <h1 id="loading-indicator" class="loading">Loading...</h1> -->
+    <form method="POST" id="my-form"
+        action="{% url 'line_graph' 'January' 'December' 'Category' 'Resource Group Name'  %}">
         {% csrf_token %}
         <p>Select the Usage Start Date:</p>
         <select name="month1" class="custom-select">
@@ -54,14 +55,14 @@
             {% endfor %}
         </select> -->
         <button type="submit">Submit</button>
-        <br>
-        <div class="button-container">
-            <button>
-                <a style="font-size: 13px;" href="{% url 'home' %}">Go to Upload >> </a>
-            </button>
-        </div>
     </form>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <br>
+    <div class="button-container">
+        <button>
+            <a style="font-size: 13px;" href="{% url 'home' %}">Go to Upload >> </a>
+        </button>
+    </div>
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
         $(document).ready(function () {
             $(document).on({
@@ -91,7 +92,7 @@
                 window.location.href = dynamicURL;
             });
         });
-    </script>
+    </script> -->
 </body>
 
 </html>

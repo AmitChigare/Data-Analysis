@@ -38,7 +38,8 @@
         </form>
         <p>Choose Method</p>
         <div class="button-container">
-            <button><a href="{% url 'line_graph_method' %}">Line Graph</a></button>
+            <button><a href="{% url 'line_graph' 'January' 'December' 'Category' 'Resource Group Name' %}">Line
+                    Graph</a></button>
             <button><a href="{% url 'stacked_bar_method' %}">Stacked Bar Graph</a></button>
         </div>
     </div>

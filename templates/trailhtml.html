@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <form method="post" id="my-form">
+        {% csrf_token %}
+        <p>Select the Usage Start Date:</p>
+        <select name="month1" class="custom-select">
+            {% for month in months %}
+            <option value="{{ month }}"><span>{{ month }}</span></option>
+            {% endfor %}
+        </select>
+
+        <p>Select the Usage End Date:</p>
+        <select name="month2" class="custom-select">
+            <option value="" disabled selected>None</option>
+            {% for month in months %}
+            <option value="{{ month }}"><span>{{ month }}</span></option>
+            {% endfor %}
+        </select>
+
+        <p>Select the Field 2:</p>
+        <select name="field2" class="custom-select">
+            <option value="Meter Name">Meter Name</option>
+            <!-- <option value="Resource Group Name">Resource Group Name</option> -->
+            <option value="Category">Category</option>
+            <option value="Subcategory">Subcategory</option>
+            <option value="Location">Location</option>
+        </select>
+
+        <p>Select the Resource group name:</p>
+        <select name="field1value">
+            {% for combined_field1_value in combined_field1_values %}
+            <option value="{{ combined_field1_value }}">{{ combined_field1_value }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Submit</button>
+
+    </form>
+</body>
+
+</html>

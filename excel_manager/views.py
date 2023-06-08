@@ -1,4 +1,5 @@
-from django.shortcuts import render, HttpResponse, redirect
+from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from .models import ExcelFile
 import re
 from django.db.models import Q
@@ -11,6 +12,7 @@ import plotly.subplots as sp
 import plotly.graph_objects as go
 
 from django.urls import reverse
+import plotly.io as pio
 
 
 # Mapping of keywords to months
@@ -102,17 +104,18 @@ def home(request):
 
 
 def line_graph_method(request):
-    if request.method == "POST":
-        month1 = request.POST.get("month1")
-        month2 = request.POST.get("month2")
-        field2 = request.POST.get("field2")
+    # if request.method == "POST":
+    #     month1 = request.POST.get("month1")
+    #     month2 = request.POST.get("month2")
+    #     field2 = request.POST.get("field2")
 
-        return redirect("line_graph", month1=month1, month2=month2, field2=field2)
+    #     return redirect("line_graph", month1=month1, month2=month2, field2=field2)
 
-    # return render(request, "line.html", {"months": months})
-    return redirect(
-        "line_graph", month1="January", month2="December", field2="Category"
-    )
+    # # return render(request, "line.html", {"months": months})
+    # return redirect(
+    #     "line_graph", month1="January", month2="December", field2="Category"
+    # )
+    pass
 
 
 def stacked_bar_method(request):
@@ -322,11 +325,13 @@ def line_graph(
     field1="Resource Group Name",
 ):
     if request.method == "POST":
+
         month1 = request.POST.get("month1")
         month2 = request.POST.get("month2")
         field2 = request.POST.get("field2")
         field1value = request.POST.get("field1value")
         # field2value = request.POST.get("field2value")
+        
         # Convert month names to datetime objects
         datetime_month1 = datetime.strptime(month1, "%B")
         datetime_month2 = datetime.strptime(month2, "%B")
@@ -448,19 +453,6 @@ def line_graph(
             )
         )
 
-        # if field2value is not None:
-        # Combine unique values of field1 and field2
-        combined_field2_values = sorted(
-            list(
-                set(
-                    item
-                    for sublist in [
-                        df[field2].tolist() for df in combined_data_dict.values()
-                    ]
-                    for item in sublist
-                )
-            )
-        )
         months = [
             "January",
             "February",
@@ -507,6 +499,7 @@ def line_graph(
 
         # Plotting the line graph
         months = list(combined_data_dict1.keys())
+        
 
         fig = go.Figure()
 
@@ -568,98 +561,34 @@ def line_graph(
             title=f'Amount for "{field1value}" in "{field2}" from {month1} to {month2}',
         )
 
-        fig.show()
+        # fig.show()
+        # return render(request, 'index.html')
+        months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+        div = pio.to_html(fig, full_html=False)
+        context2 = {
+            "combined_field1_values": combined_field1_values,
+            "combined_field2_values": combined_field2_values,
+            "months": months,
+            'graph': div
+        }
+        return render(request, 'show.html', context2)
+        # return HttpResponse('Hey')
 
-        # if field2value == "All":
-        #     amounts_dict = {}  # Dictionary to store amounts for each field2 value
-
-        #     for field2_val in combined_field2_values:
-        #         amounts = []  # List to store the amounts
-
-        #         for month, df in combined_data_dict1.items():
-        #             # Search for the row in the column field2 matching the field2_val
-        #             row = df[df[field2] == field2_val]
-
-        #             if len(row) > 0:
-        #                 # If the row is present, get the corresponding amount
-        #                 amount = row["Amount"].iloc[0]
-        #             else:
-        #                 # If the row is not present, consider the amount as zero
-        #                 amount = 0
-
-        #             amounts.append(amount)
-
-        #         amounts_dict[field2_val] = amounts
-
-        #     # Plotting the line graph
-        #     months = list(combined_data_dict1.keys())
-
-        #     fig = go.Figure()
-
-        #     for field2_val, amounts in amounts_dict.items():
-        #         fig.add_trace(
-        #             go.Scatter(
-        #                 x=months, y=amounts, mode="lines+markers", name=field2_val
-        #             )
-        #         )
-
-        #     # Customize x-axis labels to display month and year
-        #     month_years = [
-        #         f"{month} {excel_file.month.year}"
-        #         for month, excel_file in zip(months, excel_files)
-        #     ]
-        #     fig.update_layout(
-        #         xaxis=dict(
-        #             tickmode="array",
-        #             tickvals=months,
-        #             ticktext=month_years,
-        #             title="Month",
-        #         ),
-        #         yaxis=dict(title="Amount"),
-        #         title=f'Amount for "{field1value}" in each month',
-        #     )
-
-        #     fig.show()
-
-        # else:
-        #     amounts = []  # List to store the amounts
-
-        #     for month, df in combined_data_dict.items():
-        #         # Search for the row in the column field1 matching the field1value
-        #         row = df[df[field1] == field1value]
-
-        #         if len(row) > 0:
-        #             # If the row is present, get the corresponding amount
-        #             amount = row["Amount"].iloc[0]
-        #         else:
-        #             # If the row is not present, consider the amount as zero
-        #             amount = 0
-
-        #         amounts.append(amount)
-
-        #     # Plotting the line graph
-        #     months = list(combined_data_dict.keys())
-
-        #     fig = go.Figure(data=go.Scatter(x=months, y=amounts, mode="lines+markers"))
-
-        #     # Customize x-axis labels to display month and year
-        #     month_years = [
-        #         f"{month} {excel_file.month.year}"
-        #         for month, excel_file in zip(months, excel_files)
-        #     ]
-        #     fig.update_layout(
-        #         xaxis=dict(
-        #             tickmode="array",
-        #             tickvals=months,
-        #             ticktext=month_years,
-        #             title="Month",
-        #         ),
-        #         yaxis=dict(title="Amount"),
-        #         title=f'Amount for "{field1value}" in each month',
-        #     )
-
-        #     fig.show()
-
+    ###################################################################################################################
+    print('HIIII')
     # Convert month names to datetime objects
     datetime_month1 = datetime.strptime(month1, "%B")
     datetime_month2 = datetime.strptime(month2, "%B")
@@ -801,4 +730,5 @@ def line_graph(
         "months": months,
     }
 
-    return render(request, "choose.html", context)
+    return render(request, "show.html", context)
+    # return HttpResponse('Hey')
