@@ -510,10 +510,47 @@ def line_graph(
 
         fig = go.Figure()
 
-        for field2_val, amounts in amounts_dict.items():
-            fig.add_trace(
-                go.Scatter(x=months, y=amounts, mode="lines+markers", name=field2_val)
+        # Create traces
+        for index, (field2_val, amounts) in enumerate(amounts_dict.items()):
+            trace = go.Scatter(
+                x=months, y=amounts, mode="lines+markers", name=field2_val
             )
+
+            # Set visibility property for the first three traces to "True", "legendonly" for the rest
+            if index < 3:
+                trace.visible = True
+            else:
+                trace.visible = "legendonly"
+
+            fig.add_trace(trace)
+
+        # Add button to toggle visibility of all traces
+        fig.update_layout(
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    buttons=[
+                        dict(
+                            label="Toggle All",
+                            method="update",
+                            args=[
+                                {"visible": [True] * len(fig.data)}
+                            ],  # Show all traces
+                        ),
+                        dict(
+                            label="Reset",
+                            method="update",
+                            args=[
+                                {
+                                    "visible": [True]
+                                    + ["legendonly"] * (len(fig.data) - 1)
+                                }
+                            ],  # Reset visibility to initial state
+                        ),
+                    ],
+                )
+            ]
+        )
 
         # Customize x-axis labels to display month and year
         month_years = [
@@ -532,6 +569,7 @@ def line_graph(
         )
 
         fig.show()
+
         # if field2value == "All":
         #     amounts_dict = {}  # Dictionary to store amounts for each field2 value
 
