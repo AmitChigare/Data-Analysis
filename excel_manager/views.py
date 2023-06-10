@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from .models import ExcelFile
 import re
 from django.db.models import Q
+from django.urls import reverse
 from datetime import datetime
 
 import pandas as pd
@@ -10,8 +11,6 @@ import plotly.express as px
 import pandas as pd
 import plotly.subplots as sp
 import plotly.graph_objects as go
-
-from django.urls import reverse
 import plotly.io as pio
 
 
@@ -101,21 +100,6 @@ def home(request):
                 )
 
     return render(request, "index.html")
-
-
-def line_graph_method(request):
-    # if request.method == "POST":
-    #     month1 = request.POST.get("month1")
-    #     month2 = request.POST.get("month2")
-    #     field2 = request.POST.get("field2")
-
-    #     return redirect("line_graph", month1=month1, month2=month2, field2=field2)
-
-    # # return render(request, "line.html", {"months": months})
-    # return redirect(
-    #     "line_graph", month1="January", month2="December", field2="Category"
-    # )
-    pass
 
 
 def stacked_bar_method(request):
@@ -324,14 +308,54 @@ def line_graph(
     field2="Category",
     field1="Resource Group Name",
 ):
-    if request.method == "POST":
+    excel_files = ExcelFile.objects.all().order_by("month")
 
+    if not excel_files:
+        # No data within the specified month range
+        message = f"<h1>No files in the database. Please upload</h1>"
+        return HttpResponse(message)
+
+    # Create a dictionary to store the combined data for each month
+    combined_data_dict = {}
+    for excel_file in excel_files:
+        excel_file_path = excel_file.file.path
+
+        # Read Excel file into a DataFrame using pandas, skipping the first 10 rows and last row
+        df = pd.read_excel(excel_file_path, skiprows=10, skipfooter=1)
+
+        # Keep only the desired columns: field1, field2, and 'Amount'
+        df = df[[field1, field2, "Amount"]]
+
+        # Get the month of the current file
+        file_month = excel_file.month.strftime("%B")
+
+        if file_month not in combined_data_dict:
+            # If the month is not already in the dictionary, create a new key-value pair
+            combined_data_dict[file_month] = df
+        else:
+            # If the month is already in the dictionary, concatenate the DataFrame with the existing data
+            combined_data_dict[file_month] = pd.concat(
+                [combined_data_dict[file_month], df], ignore_index=True
+            )
+
+    # Combine unique values of field1 for every month
+    combined_field1_values = []
+    for df in combined_data_dict.values():
+        unique_values = df[field1].unique().tolist()
+        combined_field1_values.extend(unique_values)
+
+    # Get unique values from the combined list
+    combined_field1_values = sorted(
+        [str(value) for value in set(combined_field1_values)]
+    )
+
+    if request.method == "POST":
         month1 = request.POST.get("month1")
         month2 = request.POST.get("month2")
         field2 = request.POST.get("field2")
         field1value = request.POST.get("field1value")
         # field2value = request.POST.get("field2value")
-        
+
         # Convert month names to datetime objects
         datetime_month1 = datetime.strptime(month1, "%B")
         datetime_month2 = datetime.strptime(month2, "%B")
@@ -350,131 +374,54 @@ def line_graph(
 
         # Create a dictionary to store the combined data for each month
         combined_data_dict = {}
-        combined_data_dict1 = {}
 
         for excel_file in excel_files:
             excel_file_path = excel_file.file.path
 
-            # Read Excel file into a DataFrame using pandas, skipping the first 10 rows and last row
-            df = pd.read_excel(excel_file_path, skiprows=10, skipfooter=1)
-
-            # Get the month of the current file
-            file_month = excel_file.month.strftime("%B")
-
-            if file_month not in combined_data_dict:
-                # If the month is not already in the dictionary, create a new key-value pair
-                combined_data_dict[file_month] = df
-                combined_data_dict1[file_month] = df
-            else:
-                # If the month is already in the dictionary, concatenate the DataFrame with the existing data
-                combined_data_dict[file_month] = pd.concat(
-                    [combined_data_dict[file_month], df], ignore_index=True
-                )
-                combined_data_dict1[file_month] = pd.concat(
-                    [combined_data_dict1[file_month], df], ignore_index=True
-                )
-
-        # Keep only 'Amount', field1, and field2 columns in each DataFrame
-        for month, df in combined_data_dict.items():
-            combined_data_dict[month] = df[["Amount", field1, field2]]
-
-            # Group by field1 and aggregate the amounts
-            df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
-
-            # Update the DataFrame with the aggregated amounts
-            combined_data_dict[month] = combined_data_dict[month].merge(
-                df_grouped_field1, on=field1, suffixes=("", "_sum")
+            # Read the Excel file into a dictionary of DataFrames using pandas
+            excel_data_dict = pd.read_excel(
+                excel_file_path,
+                sheet_name=None,  # Read all sheets
+                skiprows=10,
+                skipfooter=1,
             )
 
-            # Drop duplicate rows and unnecessary columns
-            combined_data_dict[month] = combined_data_dict[month].drop_duplicates(
-                subset=field1
-            )
-            combined_data_dict[month] = combined_data_dict[month][
-                ["Amount", field1, field2]
-            ]
+            for sheet_name, df in excel_data_dict.items():
+                # Keep only the desired columns: field1, field2, and 'Amount'
+                df = df[[field1, field2, "Amount"]]
 
-        for month, df in combined_data_dict1.items():
-            combined_data_dict1[month] = df[["Amount", field1, field2]]
+                # Filter the DataFrame based on field1value
+                df = df[df[field1] == field1value]
 
-            # Group by field1 and aggregate the amounts
-            df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
+                # Rename the columns to match the specified field names
+                df.columns = [field1, field2, "Amount"]
 
-            # Update the DataFrame with the aggregated amounts
-            combined_data_dict1[month] = combined_data_dict1[month].merge(
-                df_grouped_field1, on=field1, suffixes=("", "_sum")
-            )
+                # Get the month and year of the current sheet
+                sheet_month = excel_file.month.strftime("%B")
+                sheet_year = excel_file.month.strftime("%Y")
 
-            # Drop duplicate rows and unnecessary columns
-            combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
-                subset=field1
-            )
-            combined_data_dict1[month] = combined_data_dict1[month][
-                ["Amount", field1, field2]
-            ]
+                # Create a unique key combining month and year
+                sheet_key = f"{sheet_month}-{sheet_year}"
 
-            # Group by field2 and aggregate the amounts
-            df_grouped_field2 = df.groupby(field2)["Amount"].sum().reset_index()
+                if sheet_key not in combined_data_dict:
+                    # If the month-year key is not already in the dictionary, create a new key-value pair
+                    combined_data_dict[sheet_key] = df
+                else:
+                    # If the month-year key is already in the dictionary, concatenate the DataFrame with the existing data
+                    combined_data_dict[sheet_key] = pd.concat(
+                        [combined_data_dict[sheet_key], df],
+                        ignore_index=True,
+                    )
+        print(combined_data_dict)
 
-            # Update the DataFrame with the aggregated amounts
-            combined_data_dict1[month] = combined_data_dict1[month].merge(
-                df_grouped_field2, on=field2, suffixes=("", "_sum")
-            )
+        # Combine unique values of field1 for every month
+        combined_field2_values = []
+        for df in combined_data_dict.values():
+            unique_values = df[field2].unique().tolist()
+            combined_field2_values.extend(unique_values)
 
-            # Drop duplicate rows and unnecessary columns
-            combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
-                subset=field2
-            )
-            combined_data_dict1[month] = combined_data_dict1[month][
-                ["Amount", field1, field2]
-            ]
-
-        # Combine unique values of field1
-        combined_field1_values = sorted(
-            list(
-                set(
-                    item
-                    for sublist in [
-                        df[field1].tolist() for df in combined_data_dict.values()
-                    ]
-                    for item in sublist
-                )
-            )
-        )
-        combined_field2_values = sorted(
-            list(
-                set(
-                    item
-                    for sublist in [
-                        df[field2].tolist() for df in combined_data_dict1.values()
-                    ]
-                    for item in sublist
-                )
-            )
-        )
-
-        months = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-        ]
-
-        context = {
-            "combined_field1_values": combined_field1_values,
-            "combined_field2_values": combined_field2_values,
-            # "field2": field2,
-            "months": months,
-        }
-        context["combined_field2_values"] = combined_field2_values
+        # Get unique values from the combined list
+        combined_field2_values = list(set(combined_field2_values))
 
         # if field2value == "All":
         amounts_dict = {}  # Dictionary to store amounts for each field2 value
@@ -482,7 +429,7 @@ def line_graph(
         for field2_val in combined_field2_values:
             amounts = []  # List to store the amounts
 
-            for month, df in combined_data_dict1.items():
+            for month, df in combined_data_dict.items():
                 # Search for the row in the column field2 matching the field2_val
                 row = df[df[field2] == field2_val]
 
@@ -498,8 +445,7 @@ def line_graph(
             amounts_dict[field2_val] = amounts
 
         # Plotting the line graph
-        months = list(combined_data_dict1.keys())
-        
+        months = list(combined_data_dict.keys())
 
         fig = go.Figure()
 
@@ -546,15 +492,15 @@ def line_graph(
         )
 
         # Customize x-axis labels to display month and year
-        month_years = [
-            f"{month} {excel_file.month.year}"
-            for month, excel_file in zip(months, excel_files)
-        ]
+        # month_years = [
+        #     f"{month} {excel_file.month.year}"
+        #     for month, excel_file in zip(months, excel_files)
+        # ]
         fig.update_layout(
             xaxis=dict(
                 tickmode="array",
                 tickvals=months,
-                ticktext=month_years,
+                # ticktext=month_years,
                 title="Month",
             ),
             yaxis=dict(title="Amount"),
@@ -562,7 +508,7 @@ def line_graph(
         )
 
         # fig.show()
-        # return render(request, 'index.html')
+        div = pio.to_html(fig, full_html=False)
         months = [
             "January",
             "February",
@@ -577,137 +523,13 @@ def line_graph(
             "November",
             "December",
         ]
-        div = pio.to_html(fig, full_html=False)
-        context2 = {
-            "combined_field1_values": combined_field1_values,
-            "combined_field2_values": combined_field2_values,
+        context = {
             "months": months,
-            'graph': div
+            "combined_field1_values": combined_field1_values,
+            "graph": div,
         }
-        return render(request, 'show.html', context2)
-        # return HttpResponse('Hey')
+        return render(request, "show.html", context)
 
-    ###################################################################################################################
-    print('HIIII')
-    # Convert month names to datetime objects
-    datetime_month1 = datetime.strptime(month1, "%B")
-    datetime_month2 = datetime.strptime(month2, "%B")
-
-    query = Q(
-        month__month__gte=datetime_month1.month, month__month__lte=datetime_month2.month
-    )
-
-    excel_files = ExcelFile.objects.filter(query).order_by("month")
-
-    if not excel_files:
-        # No data within the specified month range
-        message = f"<h1>No data available from {month1} to {month2}</h1>"
-        return HttpResponse(message)
-
-    # Create a dictionary to store the combined data for each month
-    combined_data_dict = {}
-    combined_data_dict1 = {}
-
-    for excel_file in excel_files:
-        excel_file_path = excel_file.file.path
-
-        # Read Excel file into a DataFrame using pandas, skipping the first 10 rows and last row
-        df = pd.read_excel(excel_file_path, skiprows=10, skipfooter=1)
-
-        # Get the month of the current file
-        file_month = excel_file.month.strftime("%B")
-
-        if file_month not in combined_data_dict:
-            # If the month is not already in the dictionary, create a new key-value pair
-            combined_data_dict[file_month] = df
-            combined_data_dict1[file_month] = df
-        else:
-            # If the month is already in the dictionary, concatenate the DataFrame with the existing data
-            combined_data_dict[file_month] = pd.concat(
-                [combined_data_dict[file_month], df], ignore_index=True
-            )
-            combined_data_dict1[file_month] = pd.concat(
-                [combined_data_dict1[file_month], df], ignore_index=True
-            )
-
-    # Keep only 'Amount', field1, and field2 columns in each DataFrame
-    for month, df in combined_data_dict.items():
-        combined_data_dict[month] = df[["Amount", field1, field2]]
-
-        # Group by field1 and aggregate the amounts
-        df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
-
-        # Update the DataFrame with the aggregated amounts
-        combined_data_dict[month] = combined_data_dict[month].merge(
-            df_grouped_field1, on=field1, suffixes=("", "_sum")
-        )
-
-        # Drop duplicate rows and unnecessary columns
-        combined_data_dict[month] = combined_data_dict[month].drop_duplicates(
-            subset=field1
-        )
-        combined_data_dict[month] = combined_data_dict[month][
-            ["Amount", field1, field2]
-        ]
-
-    for month, df in combined_data_dict1.items():
-        combined_data_dict1[month] = df[["Amount", field1, field2]]
-
-        # Group by field1 and aggregate the amounts
-        df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
-
-        # Update the DataFrame with the aggregated amounts
-        combined_data_dict1[month] = combined_data_dict1[month].merge(
-            df_grouped_field1, on=field1, suffixes=("", "_sum")
-        )
-
-        # Drop duplicate rows and unnecessary columns
-        combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
-            subset=field1
-        )
-        combined_data_dict1[month] = combined_data_dict1[month][
-            ["Amount", field1, field2]
-        ]
-
-        # Group by field2 and aggregate the amounts
-        df_grouped_field2 = df.groupby(field2)["Amount"].sum().reset_index()
-
-        # Update the DataFrame with the aggregated amounts
-        combined_data_dict1[month] = combined_data_dict1[month].merge(
-            df_grouped_field2, on=field2, suffixes=("", "_sum")
-        )
-
-        # Drop duplicate rows and unnecessary columns
-        combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
-            subset=field2
-        )
-        combined_data_dict1[month] = combined_data_dict1[month][
-            ["Amount", field1, field2]
-        ]
-
-    # Combine unique values of field1
-    combined_field1_values = sorted(
-        list(
-            set(
-                item
-                for sublist in [
-                    df[field1].tolist() for df in combined_data_dict.values()
-                ]
-                for item in sublist
-            )
-        )
-    )
-    combined_field2_values = sorted(
-        list(
-            set(
-                item
-                for sublist in [
-                    df[field2].tolist() for df in combined_data_dict1.values()
-                ]
-                for item in sublist
-            )
-        )
-    )
     months = [
         "January",
         "February",
@@ -722,13 +544,9 @@ def line_graph(
         "November",
         "December",
     ]
-
     context = {
-        "combined_field1_values": combined_field1_values,
-        "combined_field2_values": combined_field2_values,
-        # "field2": field2,
         "months": months,
+        "combined_field1_values": combined_field1_values,
     }
 
     return render(request, "show.html", context)
-    # return HttpResponse('Hey')

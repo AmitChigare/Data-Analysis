@@ -6,12 +6,156 @@ def line_graph(
     field1="Resource Group Name",
 ):
     if request.method == "POST":
-        # Some code here
-
         month1 = request.POST.get("month1")
         month2 = request.POST.get("month2")
         field2 = request.POST.get("field2")
         field1value = request.POST.get("field1value")
+        # field2value = request.POST.get("field2value")
+
+        # Convert month names to datetime objects
+        datetime_month1 = datetime.strptime(month1, "%B")
+        datetime_month2 = datetime.strptime(month2, "%B")
+
+        query = Q(
+            month__month__gte=datetime_month1.month,
+            month__month__lte=datetime_month2.month,
+        )
+
+        excel_files = ExcelFile.objects.filter(query).order_by("month")
+
+        if not excel_files:
+            # No data within the specified month range
+            message = f"<h1>No data available from {month1} to {month2}</h1>"
+            return HttpResponse(message)
+
+        # Create a dictionary to store the combined data for each month
+        combined_data_dict = {}
+        combined_data_dict1 = {}
+
+        for excel_file in excel_files:
+            excel_file_path = excel_file.file.path
+
+            # Read Excel file into a DataFrame using pandas, skipping the first 10 rows and last row
+            df = pd.read_excel(excel_file_path, skiprows=10, skipfooter=1)
+
+            # Get the month of the current file
+            file_month = excel_file.month.strftime("%B")
+
+            if file_month not in combined_data_dict:
+                # If the month is not already in the dictionary, create a new key-value pair
+                combined_data_dict[file_month] = df
+                combined_data_dict1[file_month] = df
+            else:
+                # If the month is already in the dictionary, concatenate the DataFrame with the existing data
+                combined_data_dict[file_month] = pd.concat(
+                    [combined_data_dict[file_month], df], ignore_index=True
+                )
+                combined_data_dict1[file_month] = pd.concat(
+                    [combined_data_dict1[file_month], df], ignore_index=True
+                )
+
+        # Keep only 'Amount', field1, and field2 columns in each DataFrame
+        for month, df in combined_data_dict.items():
+            combined_data_dict[month] = df[["Amount", field1, field2]]
+
+            # Group by field1 and aggregate the amounts
+            df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
+
+            # Update the DataFrame with the aggregated amounts
+            combined_data_dict[month] = combined_data_dict[month].merge(
+                df_grouped_field1, on=field1, suffixes=("", "_sum")
+            )
+
+            # Drop duplicate rows and unnecessary columns
+            combined_data_dict[month] = combined_data_dict[month].drop_duplicates(
+                subset=field1
+            )
+            combined_data_dict[month] = combined_data_dict[month][
+                ["Amount", field1, field2]
+            ]
+
+        for month, df in combined_data_dict1.items():
+            combined_data_dict1[month] = df[["Amount", field1, field2]]
+
+            # Group by field1 and aggregate the amounts
+            df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
+
+            # Update the DataFrame with the aggregated amounts
+            combined_data_dict1[month] = combined_data_dict1[month].merge(
+                df_grouped_field1, on=field1, suffixes=("", "_sum")
+            )
+
+            # Drop duplicate rows and unnecessary columns
+            combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
+                subset=field1
+            )
+            combined_data_dict1[month] = combined_data_dict1[month][
+                ["Amount", field1, field2]
+            ]
+
+            # Group by field2 and aggregate the amounts
+            df_grouped_field2 = df.groupby(field2)["Amount"].sum().reset_index()
+
+            # Update the DataFrame with the aggregated amounts
+            combined_data_dict1[month] = combined_data_dict1[month].merge(
+                df_grouped_field2, on=field2, suffixes=("", "_sum")
+            )
+
+            # Drop duplicate rows and unnecessary columns
+            combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
+                subset=field2
+            )
+            combined_data_dict1[month] = combined_data_dict1[month][
+                ["Amount", field1, field2]
+            ]
+
+        # Combine unique values of field1
+        combined_field1_values = sorted(
+            list(
+                set(
+                    item
+                    for sublist in [
+                        df[field1].tolist() for df in combined_data_dict.values()
+                    ]
+                    for item in sublist
+                )
+            )
+        )
+        combined_field2_values = sorted(
+            list(
+                set(
+                    item
+                    for sublist in [
+                        df[field2].tolist() for df in combined_data_dict1.values()
+                    ]
+                    for item in sublist
+                )
+            )
+        )
+
+        # if field2value == "All":
+        amounts_dict = {}  # Dictionary to store amounts for each field2 value
+
+        for field2_val in combined_field2_values:
+            amounts = []  # List to store the amounts
+
+            for month, df in combined_data_dict1.items():
+                # Search for the row in the column field2 matching the field2_val
+                row = df[df[field2] == field2_val]
+
+                if len(row) > 0:
+                    # If the row is present, get the corresponding amount
+                    amount = row["Amount"].iloc[0]
+                else:
+                    # If the row is not present, consider the amount as zero
+                    amount = 0
+
+                amounts.append(amount)
+
+            amounts_dict[field2_val] = amounts
+
+        # Plotting the line graph
+        months = list(combined_data_dict1.keys())
 
         fig = go.Figure()
 
@@ -74,70 +218,174 @@ def line_graph(
         )
 
         # fig.show()
-        htmlresponse=pio.to_html(fig, full_html=False)
-        return render(request, 'show.html',{'graph':htmlresponse})
-    
-    # Some code here
-    return render(request, "choose.html", context)
+        # return render(request, 'index.html')
+        months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+        div = pio.to_html(fig, full_html=False)
+        print(month1, month2, field1, field2, field1value)
+        context2 = {
+            "combined_field1_values": combined_field1_values,
+            "combined_field2_values": combined_field2_values,
+            "months": months,
+            "graph": div,
+        }
+        print("Hey")
+        return render(request, "show.html", context2)
 
-choose.html form:
-<form method="post" id="my-form"
-        action="{% url 'line_graph' 'January' 'December' 'Category' 'Resource Group Name'  %}">
-        {% csrf_token %}
-        <p>Select the Usage Start Date:</p>
-        <select name="month1" class="custom-select">
-            {% for month in months %}
-            <option value="{{ month }}"><span>{{ month }}</span></option>
-            {% endfor %}
-        </select>
+    ###################################################################################################################
+    print("HIIII")
+    # Convert month names to datetime objects
+    datetime_month1 = datetime.strptime(month1, "%B")
+    datetime_month2 = datetime.strptime(month2, "%B")
 
-        <p>Select the Usage End Date:</p>
-        <select name="month2" class="custom-select">
-            <option value="" disabled selected>None</option>
-            {% for month in months %}
-            <option value="{{ month }}"><span>{{ month }}</span></option>
-            {% endfor %}
-        </select>
+    query = Q(
+        month__month__gte=datetime_month1.month, month__month__lte=datetime_month2.month
+    )
 
-        <p>Select the Field 2:</p>
-        <select name="field2" class="custom-select">
-            <option value="Meter Name">Meter Name</option>
-            <!-- <option value="Resource Group Name">Resource Group Name</option> -->
-            <option value="Category">Category</option>
-            <option value="Subcategory">Subcategory</option>
-            <option value="Location">Location</option>
-        </select>
+    excel_files = ExcelFile.objects.filter(query).order_by("month")
 
-        <p>Select the Resource group name:</p>
-        <select name="field1value">
-            {% for combined_field1_value in combined_field1_values %}
-            <option value="{{ combined_field1_value }}">{{ combined_field1_value }}</option>
-            {% endfor %}
-        </select>
+    if not excel_files:
+        # No data within the specified month range
+        message = f"<h1>No data available from {month1} to {month2}</h1>"
+        return HttpResponse(message)
 
-        <!-- <p>Select the {{field2}} value:</p>
-        <select name="field2value">
-            <option value="All" selected>All</option>
-            {% for combined_field2_value in combined_field2_values %}
-            <option value="{{ combined_field2_value }}">{{ combined_field2_value }}</option>
-            {% endfor %}
-        </select> -->
-        <button type="submit">Submit</button>
-        <br>
-        <div class="button-container">
-            <button>
-                <a style="font-size: 13px;" href="{% url 'home' %}">Go to Upload >> </a>
-            </button>
-        </div>
-    </form>
+    # Create a dictionary to store the combined data for each month
+    combined_data_dict = {}
+    combined_data_dict1 = {}
 
-url patters:
-path("home/", views.home, name="home"),
-    path(
-        "lines/<str:month1>/<str:month2>/<str:field2>/<str:field1>/",
-        views.line_graph,
-        name="line_graph",
-    ),
+    for excel_file in excel_files:
+        excel_file_path = excel_file.file.path
 
-The response is not returned, everything is fine above the post request return but the response is not showing.
-If any confusion or any file code you want ill send 
+        # Read Excel file into a DataFrame using pandas, skipping the first 10 rows and last row
+        df = pd.read_excel(excel_file_path, skiprows=10, skipfooter=1)
+
+        # Get the month of the current file
+        file_month = excel_file.month.strftime("%B")
+
+        if file_month not in combined_data_dict:
+            # If the month is not already in the dictionary, create a new key-value pair
+            combined_data_dict[file_month] = df
+            combined_data_dict1[file_month] = df
+        else:
+            # If the month is already in the dictionary, concatenate the DataFrame with the existing data
+            combined_data_dict[file_month] = pd.concat(
+                [combined_data_dict[file_month], df], ignore_index=True
+            )
+            combined_data_dict1[file_month] = pd.concat(
+                [combined_data_dict1[file_month], df], ignore_index=True
+            )
+
+    # Keep only 'Amount', field1, and field2 columns in each DataFrame
+    for month, df in combined_data_dict.items():
+        combined_data_dict[month] = df[["Amount", field1, field2]]
+
+        # Group by field1 and aggregate the amounts
+        df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
+
+        # Update the DataFrame with the aggregated amounts
+        combined_data_dict[month] = combined_data_dict[month].merge(
+            df_grouped_field1, on=field1, suffixes=("", "_sum")
+        )
+
+        # Drop duplicate rows and unnecessary columns
+        combined_data_dict[month] = combined_data_dict[month].drop_duplicates(
+            subset=field1
+        )
+        combined_data_dict[month] = combined_data_dict[month][
+            ["Amount", field1, field2]
+        ]
+
+    for month, df in combined_data_dict1.items():
+        combined_data_dict1[month] = df[["Amount", field1, field2]]
+
+        # Group by field1 and aggregate the amounts
+        df_grouped_field1 = df.groupby(field1)["Amount"].sum().reset_index()
+
+        # Update the DataFrame with the aggregated amounts
+        combined_data_dict1[month] = combined_data_dict1[month].merge(
+            df_grouped_field1, on=field1, suffixes=("", "_sum")
+        )
+
+        # Drop duplicate rows and unnecessary columns
+        combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
+            subset=field1
+        )
+        combined_data_dict1[month] = combined_data_dict1[month][
+            ["Amount", field1, field2]
+        ]
+
+        # Group by field2 and aggregate the amounts
+        df_grouped_field2 = df.groupby(field2)["Amount"].sum().reset_index()
+
+        # Update the DataFrame with the aggregated amounts
+        combined_data_dict1[month] = combined_data_dict1[month].merge(
+            df_grouped_field2, on=field2, suffixes=("", "_sum")
+        )
+
+        # Drop duplicate rows and unnecessary columns
+        combined_data_dict1[month] = combined_data_dict1[month].drop_duplicates(
+            subset=field2
+        )
+        combined_data_dict1[month] = combined_data_dict1[month][
+            ["Amount", field1, field2]
+        ]
+
+    # Combine unique values of field1
+    combined_field1_values = sorted(
+        list(
+            set(
+                item
+                for sublist in [
+                    df[field1].tolist() for df in combined_data_dict.values()
+                ]
+                for item in sublist
+            )
+        )
+    )
+    combined_field2_values = sorted(
+        list(
+            set(
+                item
+                for sublist in [
+                    df[field2].tolist() for df in combined_data_dict1.values()
+                ]
+                for item in sublist
+            )
+        )
+    )
+    months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ]
+
+    context = {
+        "combined_field1_values": combined_field1_values,
+        "combined_field2_values": combined_field2_values,
+        # "field2": field2,
+        "months": months,
+    }
+
+    return render(request, "show.html", context)
+    # return HttpResponse('Hey')
