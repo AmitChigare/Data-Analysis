@@ -365,18 +365,13 @@ def line_graph(
         datetime_month_year1 = datetime.strptime(month_year1, "%B-%Y")
         datetime_month_year2 = datetime.strptime(month_year2, "%B-%Y")
 
-        query = Q(
-            month__year__gte=datetime_month_year1.year,
-            month__month__gte=datetime_month_year1.month,
-            month__year__lte=datetime_month_year2.year,
-            month__month__lte=datetime_month_year2.month,
-        )
+        query = Q(month__gte=datetime_month_year1, month__lte=datetime_month_year2)
 
         excel_files = ExcelFile.objects.filter(query).order_by("month")
 
         if not excel_files:
             # No data within the specified month range
-            message = f"<h1>No data available from {datetime_month_year1} to {datetime_month_year2}</h1>"
+            message = f"<h1>No data available from {month_year1} to {month_year2}</h1>"
             return HttpResponse(message)
 
         # Create a dictionary to store the combined data for each month
@@ -507,7 +502,7 @@ def line_graph(
                 title="Month",
             ),
             yaxis=dict(title="Amount"),
-            title=f'Amount for "{field1value}" in "{field2}" from {datetime_month_year1} to {datetime_month_year2}',
+            title=f'Amount for "{field1value}" in "{field2}" from {month_year1} to {month_year2}',
         )
 
         # fig.show()
