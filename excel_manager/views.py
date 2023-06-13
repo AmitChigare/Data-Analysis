@@ -6,6 +6,8 @@ from django.db.models import Q
 from django.urls import reverse
 from datetime import datetime
 
+import calendar
+
 import pandas as pd
 import plotly.express as px
 import pandas as pd
@@ -13,6 +15,24 @@ import plotly.subplots as sp
 import plotly.graph_objects as go
 import plotly.io as pio
 
+months_years = [
+    f"{month}-{year}" for year in range(2022, 2024) for month in calendar.month_name[1:]
+]
+
+months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+]
 
 # Mapping of keywords to months
 keyword_to_month = {
@@ -29,20 +49,6 @@ keyword_to_month = {
     "NOV": "November",
     "DEC": "December",
 }
-months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-]
 
 
 def home(request):
@@ -350,26 +356,27 @@ def line_graph(
     )
 
     if request.method == "POST":
-        month1 = request.POST.get("month1")
-        month2 = request.POST.get("month2")
+        month_year1 = request.POST.get("month_year1")
+        month_year2 = request.POST.get("month_year2")
         field2 = request.POST.get("field2")
         field1value = request.POST.get("field1value")
-        # field2value = request.POST.get("field2value")
 
-        # Convert month names to datetime objects
-        datetime_month1 = datetime.strptime(month1, "%B")
-        datetime_month2 = datetime.strptime(month2, "%B")
+        # Convert month and year to datetime objects
+        datetime_month_year1 = datetime.strptime(month_year1, "%B-%Y")
+        datetime_month_year2 = datetime.strptime(month_year2, "%B-%Y")
 
         query = Q(
-            month__month__gte=datetime_month1.month,
-            month__month__lte=datetime_month2.month,
+            month__year__gte=datetime_month_year1.year,
+            month__month__gte=datetime_month_year1.month,
+            month__year__lte=datetime_month_year2.year,
+            month__month__lte=datetime_month_year2.month,
         )
 
         excel_files = ExcelFile.objects.filter(query).order_by("month")
 
         if not excel_files:
             # No data within the specified month range
-            message = f"<h1>No data available from {month1} to {month2}</h1>"
+            message = f"<h1>No data available from {datetime_month_year1} to {datetime_month_year2}</h1>"
             return HttpResponse(message)
 
         # Create a dictionary to store the combined data for each month
@@ -412,7 +419,7 @@ def line_graph(
                         [combined_data_dict[sheet_key], df],
                         ignore_index=True,
                     )
-        print(combined_data_dict)
+        # print(combined_data_dict)
 
         # Combine unique values of field1 for every month
         combined_field2_values = []
@@ -423,6 +430,7 @@ def line_graph(
         # Get unique values from the combined list
         combined_field2_values = list(set(combined_field2_values))
 
+        # Forming Graphs
         # if field2value == "All":
         amounts_dict = {}  # Dictionary to store amounts for each field2 value
 
@@ -491,11 +499,6 @@ def line_graph(
             ]
         )
 
-        # Customize x-axis labels to display month and year
-        # month_years = [
-        #     f"{month} {excel_file.month.year}"
-        #     for month, excel_file in zip(months, excel_files)
-        # ]
         fig.update_layout(
             xaxis=dict(
                 tickmode="array",
@@ -504,48 +507,24 @@ def line_graph(
                 title="Month",
             ),
             yaxis=dict(title="Amount"),
-            title=f'Amount for "{field1value}" in "{field2}" from {month1} to {month2}',
+            title=f'Amount for "{field1value}" in "{field2}" from {datetime_month_year1} to {datetime_month_year2}',
         )
 
         # fig.show()
         div = pio.to_html(fig, full_html=False)
-        months = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-        ]
+
         context = {
-            "months": months,
+            "months_years": months_years,
             "combined_field1_values": combined_field1_values,
             "graph": div,
         }
         return render(request, "show.html", context)
 
-    months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ]
+    fig = go.Figure()
+    div = pio.to_html(fig, full_html=False)
     context = {
-        "months": months,
+        "months_years": months_years,
+        "graph": div,
         "combined_field1_values": combined_field1_values,
     }
 

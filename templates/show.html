@@ -107,20 +107,20 @@
         <form class="form-container" method="POST" id="formId">
             {% csrf_token %}
             <div class="form-group">
-                <label for="month1">Select the Usage Start Date:</label>
-                <select name="month1" class="custom-select">
-                    {% for month in months %}
-                    <option value="{{ month }}"><span>{{ month }}</span></option>
+                <label for="month_year1">Select the Usage Start Date:</label>
+                <select name="month_year1" class="custom-select">
+                    {% for month_year in months_years %}
+                    <option value="{{ month_year }}"><span>{{ month_year }}</span></option>
                     {% endfor %}
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="month2">Select the Usage End Date:</label>
-                <select name="month2" class="custom-select" required>
+                <label for="month_year2">Select the Usage End Date:</label>
+                <select name="month_year2" class="custom-select" required>
                     <option value="" disabled>None</option>
-                    {% for month in months %}
-                    <option value="{{ month }}"><span>{{ month }}</span></option>
+                    {% for month_year in months_years %}
+                    <option value="{{ month_year }}"><span>{{ month_year }}</span></option>
                     {% endfor %}
                 </select>
             </div>
