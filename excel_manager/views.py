@@ -293,14 +293,22 @@ def line_graph(
 
         context = {
             "months_years": months_years,
-            "combined_field1_values": combined_field1_values,
+            'month_year1':month_year1,
+            'month_year2':month_year2,
+            'field1value':field1value,
+            'field2':field2,
             "graph": div,
+            "combined_field1_values": combined_field1_values,
         }
         return render(request, "show.html", context)
     fig = go.Figure()
     div = pio.to_html(fig, full_html=False)
     context = {
         "months_years": months_years,
+        'month_year1': 'Start Date',
+        'month_year2': 'End Date',
+        'field1value':'Field 1 Value',
+        'field2':'Field 2',
         "graph": div,
         "combined_field1_values": combined_field1_values,
     }

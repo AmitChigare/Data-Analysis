@@ -6,8 +6,9 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Dashboard for Azure</title>
     <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="icon" type="imgage/png" href="favicon.png">
     <style>
         .button-container {
             display: flex;
@@ -31,6 +32,7 @@
 
 <body>
     <div class="container">
+        <h1 style="text-align: center;">Dashboard for Azure</h1>
         <form method="post" enctype="multipart/form-data" id="my-form">
             {% csrf_token %}
             <input type="file" name="files" multiple>

@@ -109,6 +109,7 @@
             <div class="form-group">
                 <label for="month_year1">Select the Usage Start Date:</label>
                 <select name="month_year1" class="custom-select">
+                    <option value="{{ month_year1 }}" selected disabled><span>{{ month_year1 }}</span></option>
                     {% for month_year in months_years %}
                     <option value="{{ month_year }}"><span>{{ month_year }}</span></option>
                     {% endfor %}
@@ -118,7 +119,7 @@
             <div class="form-group">
                 <label for="month_year2">Select the Usage End Date:</label>
                 <select name="month_year2" class="custom-select" required>
-                    <option value="" disabled>None</option>
+                    <option value="{{ month_year2 }}" selected disabled><span>{{ month_year2 }}</span></option>
                     {% for month_year in months_years %}
                     <option value="{{ month_year }}"><span>{{ month_year }}</span></option>
                     {% endfor %}
@@ -128,6 +129,7 @@
             <div class="form-group">
                 <label for="field1value">Select the Resource group name:</label>
                 <select name="field1value" class="custom-select">
+                    <option value="{{ field1value }}" selected disabled>{{ field1value }}</option>
                     {% for combined_field1_value in combined_field1_values %}
                     <option value="{{ combined_field1_value }}">{{ combined_field1_value }}</option>
                     {% endfor %}
@@ -137,6 +139,7 @@
             <div class="form-group">
                 <label for="field2">Select the Field 2:</label>
                 <select name="field2" class="custom-select">
+                    <option value="{{field2}}" selected disabled>{{field2}}</option>
                     <option value="Meter Name">Meter Name</option>
                     <option value="Category">Category</option>
                     <option value="Subcategory">Subcategory</option>

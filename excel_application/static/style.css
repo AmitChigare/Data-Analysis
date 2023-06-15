@@ -4,6 +4,7 @@ body {
             #fd1d1db4, #fcb045b6);
     background-size: 400% 400%;
     /* animation: animate-background 50s infinite ease-in-out; */
+    background-color: #f2f2f2;
     margin: 0;
     padding: 20px;
     display: flex;
