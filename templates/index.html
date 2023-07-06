@@ -8,7 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard for Azure</title>
     <link rel="stylesheet" href="{% static 'style.css' %}">
-    <link rel="icon" type="imgage/png" href="favicon.png">
+    <link rel="icon" type="image/*" href="{% static 'images/Logo.jpg' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <style>
         .button-container {
             display: flex;
@@ -31,7 +33,23 @@
 </head>
 
 <body>
-    <div class="container">
+    {% if messages %}
+    <ul class="messages customMessage"
+        style="position: absolute; top: 30px; left: 50%; transform: translate(-50%, -50%); width: max-content; height: 20px; list-style: none;">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}" {% endif %} style="padding-top: 10px;">
+            <div class="m-0 alert alert-{{ message.tags }} fade show" role="alert">
+                <strong>{{ message }}</strong>
+                <!-- <button type="button" class="close" data-dismiss="alert" aria-label="Close" data-mdb-delay="3000"
+                    style="padding: 0.65rem 1.25rem;">
+                    <span aria-hidden="true">&times;</span>
+                </button> -->
+            </div>
+            </li>
+            {% endfor %}
+    </ul>
+    {% endif %}
+    <div class="containerr">
         <h1 style="text-align: center;">Dashboard for Azure</h1>
         <form method="post" enctype="multipart/form-data" id="my-form">
             {% csrf_token %}
@@ -44,7 +62,17 @@
                     Graph</button></a>
         </div>
     </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        setTimeout(function () {
+            // Closing the alert
+            $('.alert').alert('close');
+        }, 3000);
+    </script>
 </body>
 
 </html>

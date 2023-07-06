@@ -1,10 +1,14 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 
 <head>
     <meta charset="UTF-8">
-    <title>Your Plot</title>
+    <title>Your Plot | Dashboard</title>
+    <link rel="icon" type="image/*" href="{% static 'images/Logo.jpg' %}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <style>
         * {
             box-sizing: border-box;
@@ -103,13 +107,29 @@
 </head>
 
 <body>
+    {% if messages %}
+    <ul class="messages customMessage"
+        style="position: absolute; bottom: 30px; left: 50%; transform: translate(-50%, -50%); width: max-content; height: 20px; list-style: none; z-index: 10;">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}" {% endif %} style="padding-top: 10px;">
+            <div class="m-0 alert alert-{{ message.tags }} fade show" role="alert">
+                <strong>{{ message }}</strong>
+                <!-- <button type="button" class="close" data-dismiss="alert" aria-label="Close" data-mdb-delay="3000"
+                    style="padding: 0.65rem 1.25rem;">
+                    <span aria-hidden="true">&times;</span>
+                </button> -->
+            </div>
+            </li>
+            {% endfor %}
+    </ul>
+    {% endif %}
     <div class="container">
         <form class="form-container" method="POST" id="formId">
             {% csrf_token %}
             <div class="form-group">
                 <label for="month_year1">Select the Usage Start Date:</label>
                 <select name="month_year1" class="custom-select">
-                    <option value="{{ month_year1 }}" selected disabled><span>{{ month_year1 }}</span></option>
+                    <option value="{{ month_year1 }}" selected><span>{{ month_year1 }}</span></option>
                     {% for month_year in months_years %}
                     <option value="{{ month_year }}"><span>{{ month_year }}</span></option>
                     {% endfor %}
@@ -119,7 +139,7 @@
             <div class="form-group">
                 <label for="month_year2">Select the Usage End Date:</label>
                 <select name="month_year2" class="custom-select" required>
-                    <option value="{{ month_year2 }}" selected disabled><span>{{ month_year2 }}</span></option>
+                    <option value="{{ month_year2 }}" selected><span>{{ month_year2 }}</span></option>
                     {% for month_year in months_years %}
                     <option value="{{ month_year }}"><span>{{ month_year }}</span></option>
                     {% endfor %}
@@ -129,7 +149,7 @@
             <div class="form-group">
                 <label for="field1value">Select the Resource group name:</label>
                 <select name="field1value" class="custom-select">
-                    <option value="{{ field1value }}" selected disabled>{{ field1value }}</option>
+                    <option value="{{ field1value }}" selected>{{ field1value }}</option>
                     {% for combined_field1_value in combined_field1_values %}
                     <option value="{{ combined_field1_value }}">{{ combined_field1_value }}</option>
                     {% endfor %}
@@ -139,11 +159,11 @@
             <div class="form-group">
                 <label for="field2">Select the Field 2:</label>
                 <select name="field2" class="custom-select">
-                    <option value="{{field2}}" selected disabled>{{field2}}</option>
+                    <option value="{{field2}}" selected>{{field2}}</option>
                     <option value="Meter Name">Meter Name</option>
                     <option value="Category">Category</option>
                     <option value="Subcategory">Subcategory</option>
-                    <option value="Location">Location</option>
+                    <!-- <option value="Location">Location</option> -->
                     <!-- <option value="Resource Group Name">Resource Group Name</option> -->
                 </select>
             </div>
@@ -154,6 +174,17 @@
             {{ graph|safe }}
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        setTimeout(function () {
+            // Closing the alert
+            $('.alert').alert('close');
+        }, 3000);
+    </script>
 </body>
 
 </html>

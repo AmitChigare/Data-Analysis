@@ -12,6 +12,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
+from django.contrib import messages
+
 months_years = [
     f"{month}-{year}" for year in range(2022, 2024) for month in calendar.month_name[1:]
 ]
@@ -86,7 +88,7 @@ def home(request):
                     filename=filename,
                     project_name=project_name,
                 )
-
+        messages.success(request, "File(s) Uploaded Successful")
     return render(request, "index.html")
 
 field1='Resource Group Name'
@@ -151,7 +153,7 @@ def line_graph(
         query = Q(month__gte=datetime_month_year1, month__lte=datetime_month_year2)
 
         excel_files = ExcelFile.objects.filter(query).order_by("month")
-        print(1)
+        # print(1)
 
         if not excel_files:
             # No data within the specified month range
@@ -197,7 +199,7 @@ def line_graph(
                         ignore_index=True,
                     )
         # print(combined_data_dict)
-        print(2)
+        # print(2)
 
         # Combine unique values of field2 for every month
         combined_field2_values = []
@@ -287,7 +289,7 @@ def line_graph(
             yaxis=dict(title="Amount"),
             title=f'Amount for "{field1value}" in "{field2}" from {month_year1} to {month_year2}',
         )
-        print(3)
+        # print(3)
         # fig.show()
         div = pio.to_html(fig, full_html=False)
 
@@ -296,10 +298,11 @@ def line_graph(
             'month_year1':month_year1,
             'month_year2':month_year2,
             'field1value':field1value,
-            'field2':field2,
+            'field2': field2,
             "graph": div,
             "combined_field1_values": combined_field1_values,
         }
+        messages.success(request, "Graph is Formed")
         return render(request, "show.html", context)
     fig = go.Figure()
     div = pio.to_html(fig, full_html=False)
@@ -313,4 +316,5 @@ def line_graph(
         "combined_field1_values": combined_field1_values,
     }
 
+    
     return render(request, "show.html", context)
